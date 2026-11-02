@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "exa-ultra": {
+      "type": "local",
+      "command": ["node", "/ABSOLUTE/PATH/exa-ultra-mcp/dist/index.js", "--keys-file=/ABSOLUTE/PATH/private/exa-keys"],
+      "enabled": true
+    }
+  }
+}

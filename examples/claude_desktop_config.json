@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "exa-ultra": {
+      "command": "node",
+      "args": ["/ABSOLUTE/PATH/exa-ultra-mcp/dist/index.js", "--keys-file=/ABSOLUTE/PATH/private/exa-keys"],
+      "env": { "EXA_MODE": "max" }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "exa-ultra-mcp",
+  "version": "0.2.0",
+  "description": "Local stdio MCP server for the full Exa API: multi-key failover, budget guard, and quality modes (fast / auto / max).",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "prepare": "tsc -p .",
+    "start": "node dist/index.js",
+    "test": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 test/*.test.mjs",
+    "stress": "npm run build && node test/stress.mjs",
+    "smoke": "npm run build && node test/smoke.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "exa",
+    "search",
+    "ai-agents",
+    "openbot"
+  ],
+  "author": "chocowarsky",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "bin": {
+    "exa-ultra-mcp": "dist/index.js"
+  },
+  "exports": {
+    ".": "./dist/server.js",
+    "./config": "./dist/config.js",
+    "./modes": "./dist/modes.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "AGENTS.md",
+    "LICENSE",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=20.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chocowarsky/exa-ultra-mcp.git"
+  }
+}
