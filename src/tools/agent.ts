@@ -9,8 +9,17 @@ const RUN_ID = /^[A-Za-z0-9_-]{1,200}$/;
 
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => (clearTimeout(t), resolve()), { once: true });
+    if (signal?.aborted) return resolve();
+    let t: NodeJS.Timeout;
+    const onAbort = () => {
+      clearTimeout(t);
+      resolve();
+    };
+    t = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 
 /** A run lives in the team of the key that created it. Unknown owner: ask each key until one knows it. */
@@ -42,9 +51,11 @@ async function waitRun(ctx: Ctx, id: string, seconds: number, signal?: AbortSign
   let delay = 2000;
   while (!TERMINAL.has(r.data?.status) && Date.now() + delay < until && !signal?.aborted) {
     await sleep(delay, signal);
+    if (signal?.aborted) break;
     delay = Math.min(8000, Math.round(delay * 1.5));
     r = await onOwner(ctx, id, "GET", `/agent/runs/${id}`, signal);
   }
+  if (signal?.aborted) throw new ExaError("Cancelled by the client.", 0, null, r?.keyAlias);
   bookFinal(ctx, r.data, r.keyFp);
   return r;
 }
@@ -121,14 +132,14 @@ export const registerAgent: ToolModule = (server, ctx) => {
         const need = budget ?? FIXED_EFFORT_PRICE[effort] ?? 0;
         const created = await ctx.exa.request("POST", "/agent/runs", body, { pin, cost: () => 0, need: pin ? undefined : need, signal: extra.signal });
         const id = created.data?.id;
-        if (typeof id !== "string" || !RUN_ID.test(id)) return fail(new Error(`Exa returned no run id: ${JSON.stringify(created.data).slice(0, 300)}`));
+        if (typeof id !== "string" || !RUN_ID.test(id)) return fail(new Error(`Exa returned no run id: ${JSON.stringify(created.data).slice(0, 300)}`), ctx);
         ctx.pool.setOwner(id, created.keyFp);
         ctx.pool.reserve(id, created.keyFp, need);
         if (a.wait === false) return runOut(created, a.maxChars ?? ctx.config.maxChars, a.raw);
         const r = await waitRun(ctx, id, a.waitSeconds ?? wait, extra.signal);
         return runOut(r, a.maxChars ?? ctx.config.maxChars, a.raw);
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );
@@ -151,7 +162,7 @@ export const registerAgent: ToolModule = (server, ctx) => {
         bookFinal(ctx, r.data, r.keyFp);
         return runOut(r, a.maxChars ?? ctx.config.maxChars, a.raw);
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );
@@ -204,7 +215,7 @@ export const registerAgent: ToolModule = (server, ctx) => {
         ctx.pool.release(a.id);
         return ok(`Deleted run ${a.id}.`);
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );

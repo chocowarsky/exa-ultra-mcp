@@ -58,7 +58,7 @@ export class StateStore {
     private log: (msg: string) => void = () => {},
   ) {
     this.memoryOnly = !path;
-    this.lockDir = `${path}.lock`;
+    this.lockDir = path ? `${path}.lock` : "";
     if (path) {
       try {
         mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
@@ -126,6 +126,7 @@ export class StateStore {
   }
 
   private lock(): boolean {
+    if (!this.lockDir) return false;
     const deadline = Date.now() + 2000;
     for (;;) {
       try {
@@ -146,6 +147,7 @@ export class StateStore {
   }
 
   private unlock() {
+    if (!this.lockDir) return;
     try {
       rmdirSync(this.lockDir);
     } catch {

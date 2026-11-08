@@ -72,7 +72,12 @@ export const registerMonitors: ToolModule = (server, ctx) => {
             );
             return ok(`## Monitors\n${per.flat().join("\n") || "none"}`);
           }
-          default: {
+          case "get":
+          case "delete":
+          case "trigger":
+          case "runs":
+          case "run":
+          case "update": {
             if (!a.id) return invalid(`id is required for ${a.action}.`);
             const pin = ctx.pool.owner(a.id);
             const base = `/monitors/${a.id}`;
@@ -103,9 +108,11 @@ export const registerMonitors: ToolModule = (server, ctx) => {
             delete d.webhookSecret;
             return ok(`\`\`\`json\n${JSON.stringify(d, null, 2).slice(0, 8000)}\n\`\`\``);
           }
+          default:
+            return invalid(`unknown action: ${(a as any).action}`);
         }
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );

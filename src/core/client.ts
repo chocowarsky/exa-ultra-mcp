@@ -69,15 +69,16 @@ export function costOf(data: any): number {
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     if (signal?.aborted) return reject(signal.reason);
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(t);
-        reject(signal.reason);
-      },
-      { once: true },
-    );
+    let t: NodeJS.Timeout;
+    const onAbort = () => {
+      clearTimeout(t);
+      reject(signal?.reason);
+    };
+    t = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 
 /** Spaces requests per key so one process never exceeds the per-key QPS. */
@@ -127,7 +128,12 @@ export class ExaClient {
       if (!next) break;
       tried.add(next.fp);
 
-      await this.pacer.wait(next.fp, opts.signal);
+      try {
+        await this.pacer.wait(next.fp, opts.signal);
+      } catch {
+        if (opts.signal?.aborted) throw new ExaError("Cancelled by the client.", 0, null, next.alias);
+        throw lastErr ?? new ExaError("Pacer aborted", 0, null, next.alias);
+      }
       const timeout = AbortSignal.timeout(opts.timeoutMs ?? this.opts.timeoutMs);
       const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
 

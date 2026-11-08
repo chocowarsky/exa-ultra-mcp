@@ -89,6 +89,8 @@ test("explicit invalid combos are rejected locally, before any request", async (
     ["exa_search", { query: "q", includeText: ["a", "b"] }],
     ["exa_search", { query: "q", startPublishedDate: "kemarin" }],
     ["exa_search", { query: "   " }],
+    ["exa_search", { query: "q", userLocation: "INVALID" }],
+    ["exa_search", { query: "q", includeText: ["   "] }],
     ["exa_contents", { urls: ["https://a.com"], snapshotAsOf: "2026-01-01", maxAgeHours: 0 }],
     ["exa_contents", { urls: ["not a url"] }],
     ["exa_contents", { urls: [] }],
@@ -238,5 +240,41 @@ test("keys_status and resources never expose a key", async () => {
   assert.ok(!res.contents[0].text.includes("abcdefgh-secret"));
   const modes = await s.client.readResource({ uri: "exa://modes" });
   assert.equal(JSON.parse(modes.contents[0].text).current, "max");
+  await s.close();
+});
+
+test("malformed API responses are formatted safely without crashing", async () => {
+  const s = await connect(mock);
+  mock.handler = () => [
+    200,
+    {
+      results: [null, { title: "Valid Result", url: "https://example.com/ok", extras: { links: "not-an-array" } }],
+      statuses: [
+        { id: "https://fail.com", status: "error", error: { message: "Upstream failure", code: 502 } }
+      ],
+      output: {
+        content: "test output",
+        grounding: [{ field: "summary", citations: null }]
+      },
+      costDollars: { total: NaN }
+    }
+  ];
+  const r = await s.call("exa_search", { query: "malformed test", noCache: true });
+  assert.equal(r.isError, undefined);
+  assert.match(r.text, /Valid Result/);
+  assert.match(r.text, /Upstream failure/);
+  assert.ok(!r.text.includes("[object Object]"));
+  assert.match(r.text, /cost n\/a/);
+  await s.close();
+});
+
+test("errors preserve diagnostic context in structuredContent", async () => {
+  mock.handler = () => [400, { error: "Query syntax invalid" }];
+  const s = await connect(mock);
+  const r = await s.call("exa_search", { query: "bad syntax", noCache: true });
+  assert.equal(r.isError, true);
+  assert.equal(r.structuredContent.status, 400);
+  assert.equal(r.structuredContent.error, true);
+  assert.ok(r.structuredContent.message.includes("Query syntax invalid"));
   await s.close();
 });

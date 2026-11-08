@@ -37,25 +37,39 @@ export const modeArg = z
   .describe("Quality preset for this call: fast (lite search, cheapest agent) · auto (Exa standard) · max (highest free-plan quality). Default: the server mode (see exa_mode). An explicit type/effort wins.");
 
 export const jsonObj = z.record(z.string(), z.any());
-export const isoDate = z.string().refine((s) => !Number.isNaN(Date.parse(s)), "must be an ISO 8601 date or date-time");
+export const isoDate = z.string().max(100).refine((s) => !Number.isNaN(Date.parse(s)), "must be an ISO 8601 date or date-time");
 
 export function ok(text: string, structured?: Record<string, unknown>): Out {
   return { content: [{ type: "text", text }], ...(structured ? { structuredContent: structured } : {}) };
 }
 
-export function fail(e: unknown): Out {
-  const msg = e instanceof Error ? e.message : String(e);
+export function fail(e: unknown, ctx?: Ctx): Out {
+  let msg = e instanceof Error ? e.message : String(e);
+  if (ctx) msg = ctx.exa.redact(msg);
   const hint =
     e instanceof ExaError && e.status === 400
       ? "\nExa rejected the request as invalid; fix the arguments (another key will not help)."
       : e instanceof ExaError && e.status === 403 && !e.retryable
         ? "\nThis feature is not included in the Exa plan of these keys."
         : "";
-  return { content: [{ type: "text", text: `Error: ${msg}${hint}` }], isError: true };
+  const structuredContent: Record<string, unknown> = {
+    error: true,
+    message: msg,
+  };
+  if (e instanceof ExaError) {
+    if (e.status > 0) structuredContent.status = e.status;
+    if (e.keyAlias) structuredContent.key = e.keyAlias;
+    if (e.retryable !== undefined) structuredContent.retryable = e.retryable;
+  }
+  return { content: [{ type: "text", text: `Error: ${msg}${hint}` }], structuredContent, isError: true };
 }
 
 export function invalid(msg: string): Out {
-  return { content: [{ type: "text", text: `Invalid arguments: ${msg}` }], isError: true };
+  return {
+    content: [{ type: "text", text: `Invalid arguments: ${msg}` }],
+    structuredContent: { error: true, status: 400, message: `Invalid arguments: ${msg}` },
+    isError: true,
+  };
 }
 
 export function meta(r: CallResult, cached = false) {
@@ -98,6 +112,37 @@ function stable(v: any): string {
 
 const inflight = new Map<string, Promise<CallResult>>();
 
+function waitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(new ExaError("Cancelled by the client.", 0, null));
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const onAbort = () => {
+      if (!settled) {
+        settled = true;
+        reject(new ExaError("Cancelled by the client.", 0, null));
+      }
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (v) => {
+        if (!settled) {
+          settled = true;
+          signal.removeEventListener("abort", onAbort);
+          resolve(v);
+        }
+      },
+      (err) => {
+        if (!settled) {
+          settled = true;
+          signal.removeEventListener("abort", onAbort);
+          reject(err);
+        }
+      },
+    );
+  });
+}
+
 /** POST with a TTL cache; identical requests that run at the same time share one Exa call. */
 export async function cachedPost(ctx: Ctx, path: string, body: any, opts: { noCache?: boolean; signal?: AbortSignal } = {}) {
   const key = `${path}:${stable(body)}`;
@@ -105,13 +150,16 @@ export async function cachedPost(ctx: Ctx, path: string, body: any, opts: { noCa
     const hit = ctx.cache.get(key);
     if (hit) return { r: hit, hit: true };
     const running = inflight.get(key);
-    if (running) return { r: await running, hit: true };
+    if (running) {
+      const r = await waitWithSignal(running, opts.signal);
+      return { r, hit: true };
+    }
   }
   // A shared request must not die when only one of its callers cancels, so only unshared calls get the signal.
   const p = ctx.exa.request("POST", path, body, opts.noCache ? { signal: opts.signal } : {});
   if (!opts.noCache) inflight.set(key, p);
   try {
-    const r = await p;
+    const r = await waitWithSignal(p, opts.signal);
     ctx.cache.set(key, r);
     return { r, hit: false };
   } finally {

@@ -86,7 +86,17 @@ export class KeyPool {
 
   /** Record for one key with the month rolled over; does not write. */
   private rec(s: StateData, fp: string): KeyRecord {
-    const r = s.keys[fp] ?? fresh();
+    const raw = s.keys[fp];
+    const r: KeyRecord = {
+      cooldownUntil: typeof raw?.cooldownUntil === "number" && Number.isFinite(raw.cooldownUntil) ? raw.cooldownUntil : 0,
+      disabledUntil: typeof raw?.disabledUntil === "number" && Number.isFinite(raw.disabledUntil) ? raw.disabledUntil : 0,
+      disabledReason: typeof raw?.disabledReason === "string" ? raw.disabledReason : null,
+      consecutiveFailures: typeof raw?.consecutiveFailures === "number" && Number.isFinite(raw.consecutiveFailures) ? raw.consecutiveFailures : 0,
+      lastError: typeof raw?.lastError === "string" ? raw.lastError : null,
+      month: typeof raw?.month === "string" ? raw.month : month(),
+      requests: typeof raw?.requests === "number" && Number.isFinite(raw.requests) ? raw.requests : 0,
+      spend: typeof raw?.spend === "number" && Number.isFinite(raw.spend) ? raw.spend : 0,
+    };
     if (r.month !== month()) {
       r.month = month();
       r.requests = 0;
@@ -137,6 +147,7 @@ export class KeyPool {
       });
     }
     if (this.opts.strategy === "priority") return list;
+    if (this.cursor >= Number.MAX_SAFE_INTEGER - 1000) this.cursor = 0;
     const start = this.cursor++ % list.length;
     return [...list.slice(start), ...list.slice(0, start)];
   }
@@ -145,7 +156,7 @@ export class KeyPool {
     this.opts.store.update((s) => {
       const r = this.rec(s, fp);
       r.requests++;
-      r.spend += cost > 0 ? cost : 0;
+      r.spend += cost > 0 && Number.isFinite(cost) ? cost : 0;
       r.consecutiveFailures = 0;
       r.lastError = null;
       r.cooldownUntil = 0;
@@ -154,7 +165,7 @@ export class KeyPool {
   }
 
   addSpend(fp: string, cost: number) {
-    if (!(cost > 0)) return;
+    if (!(cost > 0) || !Number.isFinite(cost)) return;
     this.opts.store.update((s) => {
       this.rec(s, fp).spend += cost;
     });
@@ -203,7 +214,9 @@ export class KeyPool {
     this.opts.store.update((s) => {
       delete s.reservations[id];
       const now = Date.now();
-      for (const [k, r] of Object.entries(s.reservations)) if (r.until <= now) delete s.reservations[k];
+      for (const [k, r] of Object.entries(s.reservations)) {
+        if (!r || typeof r.until !== "number" || r.until <= now) delete s.reservations[k];
+      }
     });
   }
 
@@ -217,7 +230,7 @@ export class KeyPool {
       const flag = `booked:${id}`;
       delete s.reservations[id];
       if (s.owners[flag]) return;
-      if (cost > 0) this.rec(s, fp).spend += cost;
+      if (cost > 0 && Number.isFinite(cost)) this.rec(s, fp).spend += cost;
       s.owners[flag] = "1";
       booked = true;
       this.trimOwners(s);

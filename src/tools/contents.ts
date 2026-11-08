@@ -26,16 +26,16 @@ export const registerContents: ToolModule = (server, ctx) => {
       try {
         const { r, hit } = await cachedPost(ctx, "/contents", body, { noCache: a.noCache, signal: extra.signal });
         const max = a.maxChars ?? ctx.config.maxChars;
-        const statuses: any[] = r.data?.statuses ?? [];
-        const results: any[] = r.data?.results ?? [];
-        const allFailed = !results.length && statuses.length > 0 && statuses.every((s) => s.status !== "success");
+        const statuses: any[] = Array.isArray(r.data?.statuses) ? r.data.statuses : [];
+        const results: any[] = Array.isArray(r.data?.results) ? r.data.results : [];
+        const allFailed = !results.length && statuses.length > 0 && statuses.every((s: any) => s?.status !== "success");
         const text = formatResults(r.data, max, `Exa contents (${urls.length} URL${urls.length > 1 ? "s" : ""})`) + footer(r, r.data, hit);
         return {
-          ...ok(text, { ...meta(r, hit), statuses, ...(a.raw ? { raw: r.data } : {}) }),
+          ...ok(text, { ...meta(r, hit), statuses, ...(allFailed ? { error: true } : {}), ...(a.raw ? { raw: r.data } : {}) }),
           ...(allFailed ? { isError: true } : {}),
         };
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );
@@ -51,7 +51,7 @@ export const registerContents: ToolModule = (server, ctx) => {
         systemPrompt: z.string().max(8000).optional(),
         outputSchema: jsonObj.optional().describe("JSON Schema for a structured answer."),
         text: z.boolean().optional().describe("Include full source text in citations (large)."),
-        userLocation: z.string().length(2).optional(),
+        userLocation: z.string().regex(/^[A-Za-z]{2}$/, "must be a 2-letter country code (e.g. US, ID)").optional(),
         ...out,
       },
     },
@@ -63,11 +63,11 @@ export const registerContents: ToolModule = (server, ctx) => {
         return ok(text, {
           ...meta(r, hit),
           answer: r.data?.answer ?? null,
-          citations: (r.data?.citations ?? []).map((c: any) => ({ title: c.title ?? null, url: c.url })),
+          citations: (Array.isArray(r.data?.citations) ? r.data.citations : []).map((c: any) => ({ title: c?.title ?? null, url: c?.url })),
           ...(a.raw ? { raw: r.data } : {}),
         });
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );

@@ -71,7 +71,7 @@ export function validateSearch(type: SearchType, a: any): string[] {
     errs.push("startPublishedDate is after endPublishedDate.");
   for (const f of ["includeText", "excludeText"] as const) {
     const v: string[] | undefined = a[f];
-    if (v && (v.length > 1 || v.some((p) => p.trim().split(/\s+/).length > 5))) errs.push(`${f} takes one phrase of up to 5 words.`);
+    if (v && (v.length > 1 || v.some((p) => !p.trim() || p.trim().split(/\s+/).length > 5))) errs.push(`${f} takes one phrase of up to 5 words.`);
   }
   return errs;
 }
@@ -101,7 +101,7 @@ export const registerSearch: ToolModule = (server, ctx) => {
         excludeText: z.array(z.string().min(1)).optional().describe("Pages must not contain this phrase (1 phrase, up to 5 words)."),
         startPublishedDate: isoDate.optional().describe("Hard filter; drops undated pages. Only for a stated date window."),
         endPublishedDate: isoDate.optional(),
-        userLocation: z.string().length(2).optional().describe("Two-letter ISO country code, e.g. ID."),
+        userLocation: z.string().regex(/^[A-Za-z]{2}$/, "must be a 2-letter country code (e.g. US, ID)").optional().describe("Two-letter ISO country code, e.g. ID."),
         systemPrompt: z.string().max(8000).optional().describe("Rules for synthesized output: keep/drop, source preference, what to do with unverifiable fields."),
         outputSchema: jsonObj.optional().describe("JSON Schema for synthesized output in output.content. Keep it small."),
         ...contentShape,
@@ -138,11 +138,11 @@ export const registerSearch: ToolModule = (server, ctx) => {
           searchType: type,
           ...(note ? { note } : {}),
           output: r.data?.output ?? null,
-          results: (r.data?.results ?? []).map((x: any) => ({ title: x.title ?? null, url: x.url, publishedDate: x.publishedDate ?? null, author: x.author ?? null })),
+          results: (r.data?.results ?? []).map((x: any) => ({ title: x?.title ?? null, url: x?.url, publishedDate: x?.publishedDate ?? null, author: x?.author ?? null })),
           ...(a.raw ? { raw: r.data } : {}),
         });
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );
@@ -205,11 +205,11 @@ export const registerSearch: ToolModule = (server, ctx) => {
           ...meta(r, hit),
           searchType: type,
           seed: { url: a.url, title: title || null },
-          results: (r.data?.results ?? []).map((x: any) => ({ title: x.title ?? null, url: x.url })),
+          results: (r.data?.results ?? []).map((x: any) => ({ title: x?.title ?? null, url: x?.url })),
           ...(a.raw ? { raw: r.data } : {}),
         });
       } catch (e) {
-        return fail(e);
+        return fail(e, ctx);
       }
     },
   );
