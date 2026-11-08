@@ -18,7 +18,6 @@ A local **stdio MCP server** for the full [Exa](https://exa.ai) API, built for A
 git clone https://github.com/chocowarsky/exa-ultra-mcp.git
 cd exa-ultra-mcp
 npm install            # also builds dist/
-npm test               # mock tests, no keys, no credits
 ```
 
 Put your keys in a private file, one per line or comma-separated. Keep it outside the repo:
@@ -149,17 +148,6 @@ import { createServer } from "exa-ultra-mcp";
 import { loadConfig } from "exa-ultra-mcp/config";
 const { server } = createServer(loadConfig({ ...process.env, EXA_MODE: "auto" }));
 ```
-
-## Development
-
-```bash
-npm test                 # build + 38 mock tests (no credits)
-npm run stress           # 1000 concurrent calls with injected failures + 4 processes sharing state
-npm run check:secrets    # scan tracked files; add --history to scan every commit
-EXA_API_KEYS_FILE=~/.config/exa-ultra/keys npm run smoke   # live test of every tool, about $0.10
-```
-
-Results on a laptop: 1000 concurrent calls with 19% injected failures (429, 5xx, timeouts, HTML) finished in about 3 s at an error rate of 0.4%. Across 4 processes, 400/400 requests and all spend were tracked. One process uses about 35 MB of RAM.
 
 ## Security
 

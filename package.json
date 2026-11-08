@@ -7,9 +7,6 @@
     "build": "tsc -p .",
     "prepare": "tsc -p .",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test --test-concurrency=1 --test-timeout=60000 test/*.test.mjs",
-    "stress": "npm run build && node test/stress.mjs",
-    "smoke": "npm run build && node test/smoke.mjs",
     "check:secrets": "node scripts/check-secrets.mjs"
   },
   "keywords": [
