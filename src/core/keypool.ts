@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import { StateStore, type KeyRecord, type StateData } from "./state.js";
 
 export type Strategy = "round-robin" | "priority" | "least-used";
@@ -66,7 +66,7 @@ const fresh = (): KeyRecord => ({
  */
 export class KeyPool {
   readonly keys: PoolKey[];
-  private cursor = Math.floor(Math.random() * 1000);
+  private cursor = randomInt(1000);
 
   constructor(
     secrets: string[],

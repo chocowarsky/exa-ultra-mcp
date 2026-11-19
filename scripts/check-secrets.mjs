@@ -6,7 +6,12 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-const git = (...a) => execFileSync("git", a, { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+const git = (...a) =>
+  execFileSync("/usr/bin/git", a, {
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+    env: { PATH: "/usr/local/bin:/usr/bin:/bin" },
+  });
 const PATTERNS = [
   ["UUID (Exa key format)", /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i],
   ["GitHub token", /\b(gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,})\b/],

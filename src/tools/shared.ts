@@ -104,7 +104,7 @@ function stable(v: any): string {
   if (Array.isArray(v)) return `[${v.map(stable).join(",")}]`;
   if (v && typeof v === "object")
     return `{${Object.keys(v)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .map((k) => `${JSON.stringify(k)}:${stable(v[k])}`)
       .join(",")}}`;
   return JSON.stringify(v);
