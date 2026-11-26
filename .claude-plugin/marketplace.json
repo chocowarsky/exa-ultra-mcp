@@ -1,0 +1,28 @@
+{
+  "name": "exa-ultra-marketplace",
+  "owner": {
+    "name": "chocowarsky",
+    "url": "https://github.com/chocowarsky"
+  },
+  "metadata": {
+    "description": "Local offline stdio MCP server and universal agent skill for the full Exa API.",
+    "version": "0.3.0"
+  },
+  "plugins": [
+    {
+      "name": "exa-ultra",
+      "source": "./",
+      "description": "Local stdio MCP server for the full Exa API with multi-key failover, budget guard, quality modes, and private key handling.",
+      "version": "0.3.0",
+      "author": {
+        "name": "chocowarsky"
+      },
+      "homepage": "https://github.com/chocowarsky/exa-ultra-mcp",
+      "repository": "https://github.com/chocowarsky/exa-ultra-mcp",
+      "license": "MIT",
+      "keywords": ["mcp", "exa", "search", "research", "stdio"],
+      "category": "search",
+      "skills": ["./skills/exa-ultra"]
+    }
+  ]
+}

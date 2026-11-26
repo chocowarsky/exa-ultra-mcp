@@ -1,0 +1,13 @@
+---
+description: Local offline setup, private key rules, and tool playbook for the exa-ultra-mcp stdio MCP server.
+alwaysApply: false
+---
+
+# exa-ultra-mcp — Cursor Agent Rule
+
+Read `AGENTS.md` and `skills/exa-ultra/SKILL.md` for full guidance.
+
+1. **Local stdio MCP server:** Build with `npm install` (compiles `dist/`), then verify offline with `node dist/index.js --doctor --json`.
+2. **Private keys:** Keys live outside git in `~/.config/exa-ultra/keys` (`chmod 600`, auto-discovered) or via `--keys-file=PATH` / `EXA_API_KEYS_FILE`. Never commit, print, or ask for raw keys in chat.
+3. **Register in Cursor:** See `examples/cursor-mcp.json` (`~/.cursor/mcp.json` or `.cursor/mcp.json`).
+4. **Before committing:** Run `npm run build && npm test && npm run check:secrets`.

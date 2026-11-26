@@ -1,0 +1,15 @@
+{
+  "name": "exa-ultra-mcp",
+  "displayName": "Exa Ultra MCP",
+  "version": "0.3.0",
+  "description": "Local offline stdio MCP server for the full Exa API: multi-key failover, monthly budget guard, quality modes (fast / auto / max), and private key-file auto-discovery.",
+  "author": {
+    "name": "chocowarsky"
+  },
+  "repository": "https://github.com/chocowarsky/exa-ultra-mcp",
+  "suggestedPrompts": [
+    "Run exa-ultra-mcp --doctor to verify local Exa API keys and readiness",
+    "Search the web with Exa Ultra in fast mode for recent documentation",
+    "Run an Exa Ultra multi-step research query with a structured output schema"
+  ]
+}

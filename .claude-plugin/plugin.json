@@ -1,0 +1,12 @@
+{
+  "name": "exa-ultra",
+  "version": "0.3.0",
+  "description": "Local offline stdio MCP server and agent skill for the full Exa API with multi-key failover, budget guards, and quality modes (fast / auto / max).",
+  "author": {
+    "name": "chocowarsky",
+    "url": "https://github.com/chocowarsky"
+  },
+  "repository": "https://github.com/chocowarsky/exa-ultra-mcp",
+  "license": "MIT",
+  "keywords": ["mcp", "exa", "search", "web-search", "agent-skill", "stdio", "offline"]
+}

@@ -37,15 +37,49 @@ const MAX_OWNERS = 2000;
 const month = () => new Date().toISOString().slice(0, 7);
 const fingerprint = (secret: string) => createHash("sha256").update(secret).digest("hex").slice(0, 12);
 
-/** Splits a comma, semicolon, space or newline separated list; trims and dedupes. */
+const PLACEHOLDER_RE = /^(paste[_-]?your|your[_-]?exa|replace[_-]?me|example[_-]?key|exa[_-]?api[_-]?key[_-]?here|<.*>|\.\.\.)/i;
+
+function isPlaceholderKey(k: string): boolean {
+  return k.length < 8 || PLACEHOLDER_RE.test(k) || /^your[-_]/i.test(k) || /placeholder/i.test(k);
+}
+
+/**
+ * Parses Exa API keys from plain text (comma, semicolon, space, or newline separated; `#` comments allowed)
+ * or JSON (`["k1", "k2"]`, `{"keys": [...]}`, `{"apiKeys": [...]}`). Trims, filters placeholders, and dedupes.
+ */
 export function parseKeys(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      let items: unknown[] = [];
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === "object") {
+        const obj = parsed as Record<string, unknown>;
+        const list = obj.keys ?? obj.apiKeys ?? obj.exaApiKeys ?? obj.EXA_API_KEYS;
+        if (Array.isArray(list)) items = list;
+        else if (typeof list === "string") return parseKeys(list);
+      }
+      const cleaned = items
+        .filter((x): x is string => typeof x === "string")
+        .map((k) => k.trim())
+        .filter((k) => k && !isPlaceholderKey(k));
+      return [...new Set(cleaned)];
+    } catch {
+      /* Fall through to plain-text parsing */
+    }
+  }
+
   const keys = raw
     .split(/\r?\n/)
     .map((line) => line.replace(/(^|\s)#.*$/, ""))
     .join(",")
     .split(/[\s,;]+/)
     .map((k) => k.trim().replace(/^["']|["']$/g, ""))
-    .filter(Boolean);
+    .filter((k) => k && !isPlaceholderKey(k));
   return [...new Set(keys)];
 }
 

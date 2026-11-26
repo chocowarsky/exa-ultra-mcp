@@ -1,12 +1,14 @@
 {
   "name": "exa-ultra-mcp",
-  "version": "0.2.0",
-  "description": "Local stdio MCP server for the full Exa API: multi-key failover, budget guard, and quality modes (fast / auto / max).",
+  "version": "0.3.0",
+  "description": "Local offline stdio MCP server for the full Exa API: multi-key failover, budget guard, quality modes (fast / auto / max), and universal AI agent harness support.",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc -p .",
     "prepare": "tsc -p .",
     "start": "node dist/index.js",
+    "doctor": "node dist/index.js --doctor",
+    "test": "node --test test/*.test.mjs",
     "check:secrets": "node scripts/check-secrets.mjs"
   },
   "keywords": [
@@ -40,6 +42,9 @@
     "dist",
     "README.md",
     "AGENTS.md",
+    "SKILL.md",
+    "skills",
+    "plugin.json",
     "LICENSE",
     "examples"
   ],
